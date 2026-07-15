@@ -21,6 +21,8 @@ from src.portfolio.recommend import (
     value_portfolio,
 )
 from src.screener.engine import ScreenerEngine
+from src.utils.db import get_companies
+
 
 
 # ==========================================================
@@ -38,7 +40,10 @@ st.set_page_config(
 # ==========================================================
 
 engine = ScreenerEngine()
+
 df = engine.apply_filters()
+
+df = get_companies()
 
 # ==========================================================
 # Sidebar
@@ -53,6 +58,14 @@ st.sidebar.write(
 )
 
 st.sidebar.markdown("---")
+
+st.sidebar.markdown("---")
+
+selected_year = st.sidebar.selectbox(
+    "Financial Year",
+    [2019, 2020, 2021, 2022, 2023, 2024],
+    index=5
+)
 
 # ==========================================================
 # Filters
@@ -145,29 +158,41 @@ st.divider()
 # KPI Cards
 # ==========================================================
 
-col1, col2, col3, col4 = st.columns(4)
+st.subheader("📊 Market Overview")
 
-col1.metric(
-    "Qualified Companies",
-    len(df),
-)
+k1, k2, k3 = st.columns(3)
+k4, k5, k6 = st.columns(3)
 
-col2.metric(
-    "Highest Score",
-    round(df["composite_quality_score"].max(), 2),
-)
-
-col3.metric(
+k1.metric(
     "Average ROE",
-    round(df["return_on_equity_pct"].mean(), 2),
+    f"{df['return_on_equity_pct'].mean():.2f}%"
 )
 
-col4.metric(
+k2.metric(
+    "Median D/E",
+    f"{df['debt_to_equity'].median():.2f}"
+)
+
+k3.metric(
+    "Companies",
+    len(df)
+)
+
+k4.metric(
+    "Median Score",
+    f"{df['composite_quality_score'].median():.1f}"
+)
+
+k5.metric(
+    "Debt Free Companies",
+    len(df[df["debt_to_equity"] == 0])
+)
+
+k6.metric(
     "Sectors",
-    df["broad_sector"].nunique(),
+    df["broad_sector"].nunique()
 )
 
-st.divider()
 
 # ==========================================================
 # Company Profile
@@ -203,14 +228,16 @@ top5 = df.nlargest(
     "composite_quality_score",
 )
 
-st.table(
+st.dataframe(
     top5[
         [
             "company_id",
             "rating",
             "composite_quality_score",
         ]
-    ]
+    ],
+    use_container_width=True,
+    hide_index=True,
 )
 
 # ==========================================================
@@ -346,12 +373,27 @@ fig = px.pie(
     sector,
     names="broad_sector",
     values="Companies",
-    title="Distribution of Qualified Companies",
+    hole=0.45,
+    title="Sector Distribution"
 )
 
 st.plotly_chart(
     fig,
     use_container_width=True,
+)
+
+st.subheader("📊 Companies by Sector")
+
+sector_count = (
+    df.groupby("broad_sector")
+      .size()
+      .reset_index(name="Companies")
+)
+
+st.dataframe(
+    sector_count,
+    use_container_width=True,
+    hide_index=True,
 )
 
 # ==========================================================
